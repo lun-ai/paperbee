@@ -1,7 +1,7 @@
 import json
+import logging
 import os
 from datetime import date, timedelta
-from logging import Logger
 from typing import Any, Dict, List, Optional, Tuple
 
 import findpapers
@@ -92,7 +92,7 @@ class PapersFinder:
         self.limit: int = 1200
         self.limit_per_database: int = 400
         allowed_databases = {"biorxiv", "arxiv", "pubmed"}
-        self.databases = databases if databases else ["biorxiv", "pubmed"]
+        self.databases = databases
         if not all(db in allowed_databases for db in self.databases):
             e = f"Invalid database(s) in {self.databases}. Allowed values are: {allowed_databases}"
             raise ValueError(e)
@@ -128,7 +128,8 @@ class PapersFinder:
         self.mattermost_team: str = mattermost_team
         self.mattermost_channel: str = mattermost_channel
         # Logger
-        self.logger = Logger("PapersFinder")
+        self.logger = logging.getLogger("PapersFinder")
+        self.logger.setLevel(logging.INFO)
         # NCBI API
         self.ncbi_api_key: str = ncbi_api_key
 
@@ -189,6 +190,7 @@ class PapersFinder:
             with open(self.search_file_biorxiv) as papers_file:
                 articles_biorxiv_dict: List[Dict[str, Any]] = json.load(papers_file)["papers"]
             articles = articles_pub_arx_dict + articles_biorxiv_dict
+            
 
         doi_extractor = PubMedClient()
         for article in tqdm(articles):
@@ -196,10 +198,24 @@ class PapersFinder:
                 doi = doi_extractor.get_doi_from_title(article["title"], ncbi_api_key=self.ncbi_api_key)
                 article["url"] = f"https://doi.org/{doi}" if doi else None
             else:
-                article["url"] = next(
-                    (s for s in article["urls"] if s.startswith("https://doi.org")),
+                # First try to find a DOI URL
+                doi_url = next(
+                    (s for s in article["urls"] if "doi.org" in s),
                     None,
                 )
+                if doi_url:
+                    article["url"] = doi_url
+                else:
+                    # For arXiv papers, use the arXiv URL instead
+                    arxiv_url = next(
+                        (s for s in article["urls"] if "arxiv.org" in s),
+                        None,
+                    )
+                    if arxiv_url:
+                        article["url"] = arxiv_url
+                    else:
+                        # Use the first available URL as fallback
+                        article["url"] = article["urls"][0] if article["urls"] else None
         articles = [article for article in articles if article.get("url") is not None]
         processor = ArticlesProcessor(articles, self.today_str)
         processed_articles = processor.articles
@@ -260,7 +276,7 @@ class PapersFinder:
         """
         self.slack_publisher: SlackPaperPublisher = SlackPaperPublisher(
             WebClient(self.slack_bot_token),
-            Logger("SlackPaperPublisher"),
+            logging.getLogger("SlackPaperPublisher"),
             channel_id=self.slack_channel_id,
         )
         papers_pub, preprints = self.slack_publisher.format_papers_for_slack(papers)
@@ -277,7 +293,7 @@ class PapersFinder:
             papers (List[str]): List of papers to post to Telegram.
         """
         telegram_publisher = TelegramPaperPublisher(
-            Logger("TelegramPaperPublisher"),
+            logging.getLogger("TelegramPaperPublisher"),
             channel_id=self.telegram_channel_id,
             bot_token=self.telegram_bot_token,
         )
@@ -294,7 +310,7 @@ class PapersFinder:
             papers (List[str]): List of papers to post to Telegram.
         """
         zulip_publisher = ZulipPaperPublisher(
-            Logger("ZulipPaperPublisher"),
+            logging.getLogger("ZulipPaperPublisher"),
             prc=self.zulip_prc,
             stream_name=self.zulip_stream,
             topic_name=self.zulip_topic,
@@ -314,7 +330,7 @@ class PapersFinder:
             papers (List[str]): List of papers to post to Mattermost.
         """
         mattermost_publisher = MattermostPaperPublisher(
-            Logger("MattermostPaperPublisher"),
+            logging.getLogger("MattermostPaperPublisher"),
             url=self.mattermost_url,
             token=self.mattermost_token,
             team=self.mattermost_team,

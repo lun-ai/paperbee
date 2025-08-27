@@ -75,7 +75,7 @@ class SlackPaperPublisher:
             Optional[dict]: The Slack API response on success, or None if there is an error.
         """
         try:
-            header = "Good morning :coffee: Here are today's papers! Enjoy your reading! :wave:\n"
+            header = "Here are today's papers! Enjoy your reading! :wave:\n"
             footer = (
                 f"*View all papers:* <https://docs.google.com/spreadsheets/d/{spreadsheet_id}|Google Sheet> :books:"
             )
@@ -126,7 +126,7 @@ class SlackPaperPublisher:
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": "Posted with `paperbee` <https://github.com/theislab/paperbee|GitHub>",
+                    "text": "Posted with `ArHive` (GitHub: TBD)",
                 },
             })
             if not self.channel_id:

@@ -40,10 +40,10 @@ def validate_configuration(
 
 def validate_platform_args(config: dict, platform: str) -> dict[str, Any]:
     """Check that all required platform arguments are set if the posting is enabled."""
-    platform_args = config.get(platform)
+    platform_args = config.get(platform, None)
     if not platform_args:
-        e = f"Platform {platform} is not enabled."
-        raise ValueError(e)
+        print(f"Platform {platform} is not enabled.")
+        return {}
 
     if platform_args.get("is_posting_on", False):
         empty_args = [param for param in platform_args if not platform_args[param]]

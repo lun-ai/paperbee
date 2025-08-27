@@ -48,7 +48,11 @@ async def daily_papers_search(
     if slack_args == {}:
         slack_args = {"bot_token": "", "channel_id": "", "is_posting_on": False}
     if mattermost_args == {}:
-        mattermost_args = {"bot_token": "", "channel_id": "", "is_posting_on": False}
+        mattermost_args = {"token": "",
+                           "channel": "",
+                           "is_posting_on": False,
+                           "url": "",
+                           "team": ""}
 
     llm_filtering = config.get("LLM_FILTERING", False)
     if llm_filtering:
@@ -126,6 +130,7 @@ def main() -> None:
         "--databases",
         nargs="+",
         type=str,
+        default=["biorxiv", "arxiv", "pubmed"],
         help="Specify any combination of databases to search among the available ones 'pubmed','arxiv', and 'biorxiv'(e.g., ['pubmed', 'arxiv']).",
     )
     args = parser.parse_args()
