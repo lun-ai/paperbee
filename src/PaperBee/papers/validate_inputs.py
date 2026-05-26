@@ -69,7 +69,7 @@ def validate_llm_args(config: dict, root_dir: str) -> Tuple[str, str, str, str]:
         raise ValueError(e)
     LANGUAGE_MODEL: str = str(config.get("LANGUAGE_MODEL", ""))
 
-    filtering_prompt: str = str(config.get("FILTERING_PROMPT", ""))
+    filtering_prompt: str = str(config.get("FILTERING_PROMPT", "N/A"))
 
     return filtering_prompt, LLM_PROVIDER, LANGUAGE_MODEL, OPENAI_API_KEY
 

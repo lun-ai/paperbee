@@ -62,7 +62,7 @@ class PapersFinder:
         query_pubmed_arxiv: Optional[str] = None,
         interactive: bool = False,
         llm_filtering: bool = False,
-        filtering_prompt: Optional[str] = "",
+        filtering_prompt: Optional[str] = "N/A",
         llm_provider: Optional[str] = "",
         model: Optional[str] = "",
         OPENAI_API_KEY: Optional[str] = "",

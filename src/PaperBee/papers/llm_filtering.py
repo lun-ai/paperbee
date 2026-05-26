@@ -5,6 +5,32 @@ from typing import List, Optional
 import litellm
 import pandas as pd
 
+SYSTEM_PROMPT = '''
+You are an assistant in a research lab. You are reviewing a list of research papers to determine if they are relevant to your lab. Please answer 'yes' or 'no' to the following question: Is the following research paper relevant? You will provide a concise description of your rationale for your decision. You should give your responses in the following format:
+
+[Relevance]
+Yes/No
+[End of Relevance]
+
+[Rationale]
+Your rational here.
+[End of Rationale]
+'''
+
+USER_PROMPT = '''
+[Title of the Publication] 
+{title}
+[End of Title of the Publication]
+
+[Filtering Criteria]
+{filtering_criteria}
+[End of Filtering Criteria]
+
+[Keywords]
+{keywords}
+[End of Keywords]
+'''
+
 
 class LLMFilter:
     """
@@ -22,7 +48,7 @@ class LLMFilter:
         df: pd.DataFrame,
         llm_provider: str = "openai",
         model: str = "gpt-3.5-turbo",
-        filtering_prompt: str = "",
+        filtering_prompt: str = "N/A",
         OPENAI_API_KEY: str = "",
     ) -> None:
         """
@@ -75,18 +101,25 @@ class LLMFilter:
             bool: True if the publication is deemed relevant, otherwise False.
         """
         if keywords:
-            message = f"Title of the publication: '{title}'\nKeywords: {', '.join(keywords)}"
+            keywords_str = ", ".join(keywords)
         else:
-            message = f"Title of the publication: '{title}'"
+            keywords_str = "N/A"
+            
+        message = USER_PROMPT.format(
+            title=title,
+            filtering_criteria=filtering_prompt,
+            keywords=keywords_str,
+        )
 
-        self.logger.debug(f"Evaluating article relevance: {title[:60]}...")
+        self.logger.debug(f"Evaluating article relevance: {message}...")
+        self.logger.info(f"{message}")
 
         try:
             # Use LiteLLM completion
             response = litellm.completion(
                 model=model,
                 messages=[
-                    {"role": "system", "content": filtering_prompt},
+                    {"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "user", "content": message},
                 ],
             )
@@ -97,8 +130,8 @@ class LLMFilter:
 
         if content is not None:
             is_relevant = "yes" in content.lower()
-            self.logger.debug(f"LLM Response for '{title[:60]}...': {content}")
-            self.logger.info(f"Article {'RELEVANT' if is_relevant else 'NOT RELEVANT'}: {title[:60]}...")
+            self.logger.debug(f"LLM Response for '{title}...': {content}")
+            self.logger.info(f"Article {'RELEVANT' if is_relevant else 'NOT RELEVANT'}: {title}...")
             self.logger.info(f"LLM Rationale: {content}")
             return is_relevant
         else:
@@ -120,6 +153,8 @@ class LLMFilter:
         for index, article in self.df.iterrows():
             article_num = len(retained_indices) + (index + 1 - len(retained_indices))
             self.logger.info(f"Processing article {article_num}/{total_articles}: {article['Title'][:60]}...")
+            
+            self.logger.info(f"Article details: {article.to_dict()}")
             
             if self.is_relevant(
                 filtering_prompt=self.filtering_prompt,
